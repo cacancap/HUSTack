@@ -1,3 +1,4 @@
 .vscode/
 bin/
 P_SubstitutionCipher.cpp
+*.exe

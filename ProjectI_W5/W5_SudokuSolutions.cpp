@@ -50,7 +50,7 @@ void resetCell(int r, int c){
 }
 
 void solveSudoku(int& totalSolutions, int& totalRemainingCells, int r, int c){
-    if (totalRemainingCells == 0){
+    if (totalRemainingCells == 0 || remainingCells.empty()){
         totalSolutions += 1;
         return;
     }
@@ -60,7 +60,7 @@ void solveSudoku(int& totalSolutions, int& totalRemainingCells, int r, int c){
             pair<int, int> nextDest = remainingCells.top();
             remainingCells.pop();
             totalRemainingCells -= 1;
-            cout << "filled: " << "<" << r << "," << c << ">" << endl;
+            // cout << "filled: " << "<" << r << "," << c << ">" << endl;
             solveSudoku(totalSolutions, totalRemainingCells, nextDest.first, nextDest.second);
             resetCell(r, c);
             totalRemainingCells += 1;
@@ -92,8 +92,7 @@ int main(){
     int totalSolutions = 0;
     pair<int, int> top = remainingCells.top();
     remainingCells.pop();
-    cout << "totalRemainingCells: " << totalRemainingCells << endl; 
     solveSudoku(totalSolutions, totalRemainingCells, top.first, top.second);
-    cout << "Result: " << totalSolutions << endl;
+    cout << totalSolutions << endl;
     return 0;
 }
