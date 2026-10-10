@@ -4,17 +4,16 @@
 
 using namespace std;
 
-struct TreeNode{
-    int value;
-    TreeNode* leftChild = nullptr;
-    TreeNode* rightChild = nullptr;
-};
-
 // ── BSTree class 
 class BSTree {
 private:
-    TreeNode* root;
+    struct TreeNode{
+        int value;
+        TreeNode* leftChild = nullptr;
+        TreeNode* rightChild = nullptr;
+    };
 
+    TreeNode* root;
     void preOrderTraversal(TreeNode* node){
         if (node == nullptr) return;
         cout << node->value << " ";

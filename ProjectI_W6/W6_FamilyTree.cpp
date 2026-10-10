@@ -16,6 +16,14 @@ private:
     
     unordered_map<string, FTreeNode*> dictionary;
 public:
+    FamilyTree() = default;
+    ~FamilyTree(){
+        for (auto& pair : dictionary) {
+            delete pair.second; 
+        }
+    dictionary.clear();
+    }
+
     void insertNewChild(FTreeNode* parentNode, FTreeNode* newChild){
         if (parentNode == nullptr || newChild == nullptr) return;
         newChild->parent = parentNode;
