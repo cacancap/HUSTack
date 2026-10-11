@@ -6,6 +6,7 @@ using namespace std;
 int main(){
     ios_base::sync_with_stdio(false); 
     cin.tie(nullptr);
+    
     stack<int> stk;
     string line;
     while(getline(cin, line)){
