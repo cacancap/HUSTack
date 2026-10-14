@@ -1,174 +1,188 @@
 #include <iostream>
 #include <vector>
-#include <numeric>
+#include <tuple>
 #include <algorithm>
-
+#include <numeric>
 using namespace std;
 
-int m, n;
-vector<vector<int>> teachersOfCourse;
-vector<vector<bool>> canTeach;
-vector<int> credits;
-vector<int> LB;
-vector<unsigned int> conflictMask;
+int best_max_load = INT_MAX;
 
-// Trạng thái tìm kiếm
-vector<unsigned int> assignedMask;
-vector<int> teacherLoad;
-vector<int> teacherCourseCount;
-
-vector<int> courseOrder;
-vector<int> remCredit;
-vector<vector<int>> remCanTeach;
-
-int bestMaxLoad = 1e9;
-
-void backtrack(int step, int currentTotalLoad) {
-    if (step == n) {
-        for (int t = 0; t < m; ++t) {
-            if (teacherCourseCount[t] < LB[t]) return;
+class Courses{
+private:
+       
+    
+public:
+    int max_load = INT_MAX;
+    int numberOfCourses, numberOfTeachers;
+    vector<int> course_order;   // Sorted order of course list by 3 criterias.
+    vector<int> teacher_count;  // Track number of teachers prefering each course.
+    vector<int> conflict_count; // Track number of confliction in each course.
+    vector<vector<bool>> conflictingTable;  // Track every pair of courses that are conflict to each other.
+    vector<int> assigned;   // Track & map a course to a teacher.
+    vector<int> assigned_count; // Count the number of courses assigned to a teacher.
+    vector<int> load;       // Track the number of credits assigned to a teacher.
+    vector<vector<bool>> isPreference;  // Track whether a course is prefered by a teacher or not.
+    vector<int> credits;    // Track credits of each subject.
+    vector<int> LB;         // Lowerbound: minimum credit that a teacher can solve.
+    vector<vector<int>> can_be_teached;
+    Courses(int numberOfCourses, int numberOfTeachers){
+        conflictingTable = vector<vector<bool>> (numberOfCourses + 1, vector<bool>(numberOfCourses + 1, false));
+        assigned = vector<int> (numberOfCourses + 1, 0);
+        assigned_count = vector<int> (numberOfTeachers + 1, 0);
+        credits = vector<int> (numberOfCourses + 1, 0);
+        LB = vector<int> (numberOfTeachers + 1, 0);
+        teacher_count = vector<int> (numberOfCourses + 1, 0);
+        conflict_count = vector<int> (numberOfCourses + 1, 0);
+        isPreference = vector<vector<bool>> (numberOfCourses + 1, vector<bool> (numberOfTeachers + 1, false));
+        can_be_teached = vector<vector<int>> (numberOfCourses + 1, vector<int>());
+        this->numberOfCourses = numberOfCourses; this->numberOfTeachers = numberOfTeachers;
+        
+    }
+    void add_preference(int courseNumber, int teacherNumber){
+        if (courseNumber > numberOfCourses || teacherNumber > numberOfTeachers){
+            cout << "invalid add command!" << endl;
+            return;
         }
+        isPreference[courseNumber][teacherNumber] = true;
+        teacher_count[courseNumber]++;
+        can_be_teached[courseNumber].push_back(teacherNumber);
+    }
 
-        int currentMaxLoad = 0;
-        for (int t = 0; t < m; ++t) {
-            currentMaxLoad = max(currentMaxLoad, teacherLoad[t]);
+    void add_credits(){
+        for (int i = 1; i <= numberOfCourses; i++){
+            cin >> credits[i];
         }
-        bestMaxLoad = min(bestMaxLoad, currentMaxLoad);
+    }
+    void add_LB(){
+        for (int i = 1; i <= numberOfTeachers; i++){
+            cin >> LB[i];
+        }
+    }
+    void set_conflict(int course1, int course2){
+        conflictingTable[course1][course2] = conflictingTable[course2][course1] = true;
+        conflict_count[course1] ++;
+        conflict_count[course2] ++;
+    }
+    void assign(int courseNumber, int teacherNumber){
+        assigned[courseNumber] = teacherNumber;
+    }
+    void undo_assign(int courseNumber){
+        assigned[courseNumber] = 0;
+    }
+    void printPreferences(){
+        for (int i = 1; i <= numberOfCourses; i++){
+            for (int j = 1; j <= numberOfTeachers; j++){
+                cout << isPreference[i][j] << " ";
+            }
+            cout << endl;
+        }
+    }
+    void printConflict(){
+        for (int i = 1; i <= numberOfCourses; i++){
+            for (int j = 1; j <= numberOfCourses; j++){
+                cout << conflictingTable[i][j] << " ";
+            }
+            cout << endl;
+        }
+    }
+    void print_teacher_count(){
+        for (int i = 1; i <= numberOfCourses; i++){
+            cout << "subject: " << i << ", count: " << teacher_count[i] << endl;
+        }
+    }
+};
+
+
+vector<int> sortCourses(int n,  const vector<int>& teacher_count,
+                                const vector<int>& conflict_count,
+                                const vector<int>& credits){
+    vector<int> course_order(n);
+    iota(course_order.begin(), course_order.end(), 1);
+          /*
+        Compare by criterias:
+        1. teacher_count ascending
+        2. credit descending
+        3. conflict_count descending
+        */
+    sort(course_order.begin(), course_order.end(), [&](int a, int b){
+        if (teacher_count[a] != teacher_count[b]) 
+            return teacher_count[a] < teacher_count[b]; // 1. teacher_count tăng dần
+        if (credits[a] != credits[b]) 
+            return credits[a] > credits[b];             // 2. credits giảm dần
+        return conflict_count[a] > conflict_count[b];   // 3. conflict_count giảm dần
+    });                                
+    return course_order;
+}
+
+bool canTeach(Courses& courses, int teacherNumber, int courseNumber){
+    if (courses.assigned[courseNumber] != 0 || 
+        !courses.isPreference[courseNumber][teacherNumber]
+        ) return false;
+    
+    return true;
+}
+
+void tryAssigning(int step, Courses& courses){
+    if (step > courses.numberOfCourses){
+        best_max_load = (courses.max_load < best_max_load) ? courses.max_load : best_max_load;
         return;
     }
 
-    // Tỉa nhánh: cận tải trọng trung bình
-    int minPossibleMax = (currentTotalLoad + remCredit[step] + m - 1) / m;
-    if (minPossibleMax >= bestMaxLoad) return;
+    int targetCourse = courses.course_order[step];
+    vector<int> candidateTeacher = courses.can_be_teached[targetCourse];
 
-    // Tỉa nhánh: kiểm tra tính khả thi của LB
-    int totalDeficit = 0;
-    for (int t = 0; t < m; ++t) {
-        if (teacherCourseCount[t] + remCanTeach[t][step] < LB[t]) return;
-        if (teacherCourseCount[t] < LB[t]) {
-            totalDeficit += (LB[t] - teacherCourseCount[t]);
+
+    sort(candidateTeacher.begin(), candidateTeacher.end(), [&](int a, int b){
+        int remain_lb1 = max(0, courses.LB[a] - courses.assigned_count[a]);
+        int remain_lb2 = max(0, courses.LB[b] - courses.assigned_count[b]);
+        if (courses.load[a] != courses.load[b]){
+            return courses.load[a] < courses.load[b];
         }
-    }
-    if (totalDeficit > n - step) return;
-
-    int c = courseOrder[step];
-
-    // Lọc các giáo viên hợp lệ
-    vector<int> candidateTeachers;
-    for (int t : teachersOfCourse[c]) {
-        if (teacherLoad[t] + credits[c] >= bestMaxLoad) continue;
-        if (assignedMask[t] & conflictMask[c]) continue;
-        candidateTeachers.push_back(t);
-    }
-
-    // Ưu tiên giáo viên có tải trọng nhỏ hơn
-    sort(candidateTeachers.begin(), candidateTeachers.end(), [](int a, int b) {
-        return teacherLoad[a] < teacherLoad[b];
+        return remain_lb1 > remain_lb2;
     });
 
-    for (int t : candidateTeachers) {
-        if (teacherLoad[t] + credits[c] >= bestMaxLoad) continue;
-
-        assignedMask[t] |= (1U << c);
-        teacherLoad[t] += credits[c];
-        teacherCourseCount[t]++;
-
-        backtrack(step + 1, currentTotalLoad + credits[c]);
-
-        assignedMask[t] ^= (1U << c);
-        teacherLoad[t] -= credits[c];
-        teacherCourseCount[t]--;
+    for (int t : candidateTeacher){
+        if (canTeach(courses, t, targetCourse)){
+            
+        }
     }
+    
 }
 
-int main() {
+void input(){
+    int m, n;
+    cin >> m >> n;
+    Courses courses(n, m);  // Initialize
+
+    // For m teachers: input the preference list for each one of them.
+    for (int i = 1; i <= m; i++){
+        int k; cin >> k;
+        for (int j = 1; j <= k; j++){
+            int preferenceSubject; cin >> preferenceSubject;
+            courses.add_preference(preferenceSubject, i);
+        }
+    }
+
+    courses.add_credits();
+    courses.add_LB();
+    int numberOfContraints;
+    cin >> numberOfContraints;
+
+    for (int i = 0; i < numberOfContraints; i++){
+        int subject1, subject2;
+        cin >> subject1 >> subject2;
+        courses.set_conflict(subject1, subject2);
+    }
+
+    courses.course_order = sortCourses(n, courses.teacher_count, courses.conflict_count, courses.credits);
+    tryAssigning(0, courses);
+}
+
+int main(){
     ios_base::sync_with_stdio(false);
     cin.tie(NULL);
-
-    if (!(cin >> m >> n)) return 0;
-
-    teachersOfCourse.assign(n, vector<int>());
-    canTeach.assign(m, vector<bool>(n, false));
-
-    for (int t = 0; t < m; ++t) {
-        int k;
-        cin >> k;
-        for (int j = 0; j < k; ++j) {
-            int c;
-            cin >> c;
-            --c;
-            canTeach[t][c] = true;
-            teachersOfCourse[c].push_back(t);
-        }
-    }
-
-    credits.resize(n);
-    for (int i = 0; i < n; ++i) cin >> credits[i];
-
-    LB.resize(m);
-    int sumLB = 0;
-    for (int i = 0; i < m; ++i) {
-        cin >> LB[i];
-        sumLB += LB[i];
-    }
-
-    int K;
-    cin >> K;
-    conflictMask.assign(n, 0);
-    for (int k = 0; k < K; ++k) {
-        int u, v;
-        cin >> u >> v;
-        --u; --v;
-        conflictMask[u] |= (1U << v);
-        conflictMask[v] |= (1U << u);
-    }
-
-    // Kiểm tra nhanh điều kiện vô nghiệm
-    if (sumLB > n) {
-        cout << -1 << "\n";
-        return 0;
-    }
-    for (int c = 0; c < n; ++c) {
-        if (teachersOfCourse[c].empty()) {
-            cout << -1 << "\n";
-            return 0;
-        }
-    }
-
-    // MRV heuristic: Ưu tiên môn có ít giáo viên dạy được và tín chỉ lớn
-    courseOrder.resize(n);
-    iota(courseOrder.begin(), courseOrder.end(), 0);
-    sort(courseOrder.begin(), courseOrder.end(), [](int a, int b) {
-        if (teachersOfCourse[a].size() != teachersOfCourse[b].size()) {
-            return teachersOfCourse[a].size() < teachersOfCourse[b].size();
-        }
-        return credits[a] > credits[b];
-    });
-
-    // Tiền xử lý tổng tín chỉ và số môn có thể dạy còn lại để tỉa nhánh
-    remCredit.assign(n + 1, 0);
-    for (int i = n - 1; i >= 0; --i) {
-        remCredit[i] = remCredit[i + 1] + credits[courseOrder[i]];
-    }
-
-    remCanTeach.assign(m, vector<int>(n + 1, 0));
-    for (int t = 0; t < m; ++t) {
-        for (int i = n - 1; i >= 0; --i) {
-            remCanTeach[t][i] = remCanTeach[t][i + 1] + (canTeach[t][courseOrder[i]] ? 1 : 0);
-        }
-        if (remCanTeach[t][0] < LB[t]) {
-            cout << -1 << "\n";
-            return 0;
-        }
-    }
-
-    assignedMask.assign(m, 0);
-    teacherLoad.assign(m, 0);
-    teacherCourseCount.assign(m, 0);
-
-    backtrack(0, 0);
-
-    cout << (bestMaxLoad >= 1e9 ? -1 : bestMaxLoad) << "\n";
+    input();
 
     return 0;
 }
+
