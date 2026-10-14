@@ -3,10 +3,13 @@
 #include <numeric>
 #include <algorithm>
 #include <climits>
+#include "profiler.h"
 using namespace std;
 
 int best_max_load = INT_MAX;
-
+int pruning_method1_count = 0;
+int pruning_method2_count = 0;
+int function_calling = 0;
 class Courses{
 public:
     vector<int> credits;    // Count the credits of each course.
@@ -33,10 +36,11 @@ public:
 class Teachers{
 public:
     int cur_max_load = 0;
+    int total_missing_LB = 0;
     vector<int> LB; // Lower bound: minimum number of courses that a teacher can hold.
     vector<vector<int>> teached;    // adjacent list: track the teached courses in each teacher.
     vector<int> load;   // Track the number of credits in each teacher.
-
+    
     Teachers(int numberOfTeachers, int numberOfCourses){
         LB = vector<int> (numberOfTeachers + 1, 0);
         teached = vector<vector<int>> (numberOfTeachers + 1, vector<int> ());
@@ -96,6 +100,7 @@ vector<int> sortCourses(int numberOfCourses, vector<int>& preference_count, vect
 }
 
 void Try(int step, Courses& courses, Teachers& teachers){
+    function_calling ++;
     if (step == courses.numberOfCourses){
         for (int t = 1; t <= courses.numberOfTeachers; t++){
             if (teachers.teached[t].size() < teachers.LB[t]){
@@ -106,22 +111,60 @@ void Try(int step, Courses& courses, Teachers& teachers){
         return;
     }
 
+    // Pruning 2
+    if (teachers.total_missing_LB > courses.numberOfCourses - step){
+        pruning_method2_count++;
+        return;
+    }
+
     int targetCourse = courses.sorted_course_order[step];
+    vector<int> candidate;
     for (int t = 1; t <= courses.numberOfTeachers; t++){
         if (can_teach(courses, teachers, targetCourse, t)){
-            int prev_max_load = teachers.cur_max_load;
-            // Assign 
-            teachers.teached[t].push_back(targetCourse);
-            teachers.load[t] += courses.credits[targetCourse];
-            if (teachers.load[t] > teachers.cur_max_load) teachers.cur_max_load = teachers.load[t];
-            courses.assigned_to[targetCourse] = t;
-            Try(step + 1, courses, teachers);
-            // Backtrack
-            teachers.teached[t].pop_back();
-            teachers.load[t] -= courses.credits[targetCourse];
-            courses.assigned_to[targetCourse] = 0;
-            teachers.cur_max_load = prev_max_load;
+            candidate.push_back(t);
         }
+    }
+
+    sort(candidate.begin(), candidate.end(), [&](int teacherA, int teacherB){
+        /*
+        Sort by 2 criterias:
+        1. Prioritize teachers having remaining LB low (nearly finish) 
+        2. Teachers with lower load.
+        */
+        if (teachers.load[teacherA] != teachers.load[teacherB]){
+            return teachers.load[teacherA] < teachers.load[teacherB];
+        }
+        
+        int remaining_LBA = max(0, teachers.LB[teacherA] - (int)teachers.teached[teacherA].size());
+        int remaining_LBB = max(0, teachers.LB[teacherB] - (int)teachers.teached[teacherB].size());
+
+        return (remaining_LBA != 0 && remaining_LBB != 0 ) ? remaining_LBA < remaining_LBB : remaining_LBA > remaining_LBB;
+    });
+
+    for (int t : candidate){
+        // Pruning 1
+        if (teachers.load[t] + courses.credits[targetCourse] >= best_max_load){
+            pruning_method1_count++;
+            continue;
+        }
+        int prev_max_load = teachers.cur_max_load;
+        bool helped_LB = ((int)teachers.teached[t].size() < teachers.LB[t]);
+        // Assign 
+        teachers.teached[t].push_back(targetCourse);
+        teachers.load[t] += courses.credits[targetCourse];
+        if (teachers.load[t] > teachers.cur_max_load) teachers.cur_max_load = teachers.load[t];
+        courses.assigned_to[targetCourse] = t;
+        
+        if (helped_LB) teachers.total_missing_LB -= 1;
+
+        Try(step + 1, courses, teachers);
+        
+        // Backtrack
+        teachers.teached[t].pop_back();
+        teachers.load[t] -= courses.credits[targetCourse];
+        courses.assigned_to[targetCourse] = 0;
+        teachers.cur_max_load = prev_max_load;
+        if (helped_LB) teachers.total_missing_LB += 1;
     }
 }
 
@@ -143,6 +186,7 @@ void input(){
 
     for (int t = 1; t <= m; t++){
         cin >> teachers.LB[t];
+        teachers.total_missing_LB += teachers.LB[t];
     }
 
     int numberOfConflictions; cin >> numberOfConflictions;
@@ -153,12 +197,23 @@ void input(){
 
     courses.sorted_course_order = sortCourses(n, courses.preference_count, courses.conflict_count, courses.credits);
 
-    Try(0, courses, teachers);
+    {
+        PROFILE_SCOPE("Branch and Bound Algorithm:");
+        Try(0, courses, teachers);
+    }
+    
 
-    cout << best_max_load << endl;
+    cout << endl << best_max_load << endl;
+    if (best_max_load == INT_MAX){
+        cout << "NO SOLUTION!" << endl;
+    }
+    cout << "pruning 1: reduces " << pruning_method1_count << endl;
+    cout << "Pruning 2: reduces " << pruning_method2_count << endl;
+    cout << "function calling: " << function_calling << endl;
 }
 
 int main(){
+    
     ios_base::sync_with_stdio(false);
     cin.tie(NULL);
     input();
