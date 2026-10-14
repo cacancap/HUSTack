@@ -138,7 +138,8 @@ void Try(int step, Courses& courses, Teachers& teachers){
         int remaining_LBA = max(0, teachers.LB[teacherA] - (int)teachers.teached[teacherA].size());
         int remaining_LBB = max(0, teachers.LB[teacherB] - (int)teachers.teached[teacherB].size());
 
-        return (remaining_LBA != 0 && remaining_LBB != 0 ) ? remaining_LBA < remaining_LBB : remaining_LBA > remaining_LBB;
+        return remaining_LBA > remaining_LBB;
+        // return (remaining_LBA != 0 && remaining_LBB != 0 ) ? remaining_LBA < remaining_LBB : remaining_LBA > remaining_LBB;
     });
 
     for (int t : candidate){

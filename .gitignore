@@ -2,3 +2,4 @@
 bin/
 P_SubstitutionCipher.cpp
 *.exe
+*.o
