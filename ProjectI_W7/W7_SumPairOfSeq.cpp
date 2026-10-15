@@ -22,6 +22,8 @@ int sumPairOfSeq_TwoPointers(vector<int>& arr, int M){
     return count;
 }
 
+
+
 int main(){
     int n, M; cin >> n >> M;
     vector<int> arr(n);
