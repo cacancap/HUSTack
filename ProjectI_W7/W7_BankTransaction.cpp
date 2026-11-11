@@ -133,12 +133,5 @@ int main(){
             else cout << "1" << endl;
         }
     }
-
-    // print_accounts();
-    // bool find = false;
-    // inspect_cycle(3, "T000010010", "T000010010", find);
-    // if (find == true){
-    //     cout << "1" << endl;
-    // }
     return 0;
 }
