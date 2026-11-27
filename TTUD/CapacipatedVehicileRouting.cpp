@@ -71,6 +71,27 @@ int calculate_rem_out(int mask, int n, vector<int>& min_out){
     return total;
 }
 
+void BitmaskDP(int n, int K){
+    vector<vector<int>> dp(K + 1, vector<int>(1 << n, INF));
+    // Initialize values
+    for (int mask = 1; mask < (1 << n); mask++){
+        dp[1][mask] = cost_mask[mask];
+    }
+
+    // Dp: assign a sub to k-th car, the entire is assigned to k-1 previous cars.
+    for (int k = 2; k <= K; k++){
+        for (int mask = 1; mask < (1 << n); mask++){
+            for (int sub = mask; sub > 0; sub = (sub - 1) & mask){
+                if (cost_mask[sub] < INF && cost_mask[sub ^ mask] < INF){
+                    dp[k][mask] = min(dp[k][mask], dp[k - 1][sub ^ mask] + cost_mask[sub]);
+                }
+            }
+        
+        }
+    }
+    cout << dp[K][(1 << n) - 1] << endl;
+}
+
 int main(){
     ios_base::sync_with_stdio(false);
     cin.tie(nullptr);
@@ -114,6 +135,14 @@ int main(){
         }
     }
 
+    cout << "COst mask: " << endl;
+    for (int mask = 1; mask < (1 << n); mask++){
+        if (cost_mask[mask] < INF){
+            cout << "mask " << mask << ": " << cost_mask[mask] << endl;
+        }
+    }
+
+    BitmaskDP(n, K);
     
 
     return 0;
