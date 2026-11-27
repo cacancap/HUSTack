@@ -34,10 +34,10 @@ int BFS(vector<vector<int>>& A, int posX, int posY){
     while (!q.empty()){
         Step curStep = q.front();
         q.pop();
-        cout << "visited: " << "{" << curStep.r << " , " << curStep.c << "}: " << curStep.count << endl; 
+        // cout << "visited: " << "{" << curStep.r << " , " << curStep.c << "}: " << curStep.count << endl; 
         if (isFinished(A, curStep)){
             min_count = min(min_count, curStep.count + 1);
-            cout << "Finshed" << endl; 
+            // cout << "Finshed" << endl; 
         }
 
         if (canVisit(visited, A, Step(curStep.r + 1, curStep.c, curStep.count + 1))){
@@ -68,8 +68,8 @@ int main(){
             cin >> A[i][j];
         }
     }
-    cout << "size: " << A.size() << ", " << A[0].size() << endl;
-    cout << "Result: " << BFS(A, r - 1, c - 1) << endl;
+    
+    cout << BFS(A, r - 1, c - 1) << endl;
 
     return 0;
 }
