@@ -123,7 +123,8 @@ int main(){
         }
         else if (command == "?number_error_submision_of_user"){
             string userId; ss >> userId;
-            cout << userDictionary[userId]->total_err << endl;
+            if (userDictionary.find(userId) != userDictionary.end()) cout << userDictionary[userId]->total_err << endl;
+            else cout << "0" << endl;
         }
         else if (command == "?total_point_of_user"){
             string userId; ss >> userId;
