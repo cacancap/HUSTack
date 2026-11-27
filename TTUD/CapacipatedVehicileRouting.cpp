@@ -82,14 +82,20 @@ void BitmaskDP(int n, int K){
     for (int k = 2; k <= K; k++){
         for (int mask = 1; mask < (1 << n); mask++){
             for (int sub = mask; sub > 0; sub = (sub - 1) & mask){
-                if (cost_mask[sub] < INF && cost_mask[sub ^ mask] < INF){
+                if (cost_mask[sub] < INF && dp[k - 1][sub ^ mask] < INF){
                     dp[k][mask] = min(dp[k][mask], dp[k - 1][sub ^ mask] + cost_mask[sub]);
                 }
             }
         
         }
     }
-    cout << dp[K][(1 << n) - 1] << endl;
+
+    int ans = INF;
+    for(int k = 1; k <= K; k++){
+        ans = min(ans, dp[k][(1 << n) - 1]);
+    }
+
+    cout << ans << endl;
 }
 
 int main(){
@@ -134,14 +140,6 @@ int main(){
             tsp(distance_matrix, visited, mask, 0, number_of_clients, 0, rem_out, min_out);
         }
     }
-
-    cout << "COst mask: " << endl;
-    for (int mask = 1; mask < (1 << n); mask++){
-        if (cost_mask[mask] < INF){
-            cout << "mask " << mask << ": " << cost_mask[mask] << endl;
-        }
-    }
-
     BitmaskDP(n, K);
     
 
